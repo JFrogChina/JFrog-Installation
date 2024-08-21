@@ -19,13 +19,18 @@
     sudo yum install jfrog-artifactory-pro
     ```
 2. 修改配置文件(Customize the product configuration (optional) including database, Java Opts, and filestore.)
+Artifactory默认使用derby数据库，在7.84.x以上的版本需要添加 allowNonPostgresql 进行声明(部分版本可能遇到mc引起的启动失败，所以如果不测试MC，可以先关闭)；
     ```
     # vim /opt/jfrog/artifactory/var/etc/system.yaml
     shared:
     ....
       node:
         id: "art1"
-        ip: "192.168.xx.xx”
+        ip: "192.168.xx.xx"
+      database:
+        allowNonPostgresql: true
+    mc:
+      enabled: false
     ....
     ```
 3. 启动Artifactory(Manage Artifactory using the following commands.)
@@ -67,8 +72,8 @@
         mkdir -p /var/opt/postgres/data
         rpm -ivh --replacepkgs ./third-party/postgresql/libicu-*.el7_7.x86_64.rpm
         rpm -ivh --replacepkgs ./third-party/postgresql/postgresql13-libs-*.rhel7.x86_64.rpm
-        rpm -ivh --replacepkgs ./third-party/postgresql/postgresql13-13.4-*.rhel7.x86_64.rpm
-        rpm -ivh --replacepkgs ./third-party/postgresql/postgresql13-server-13.4-*.rhel7.x86_64.rpm
+        rpm -ivh --replacepkgs ./third-party/postgresql/postgresql13-13.*.rhel7.x86_64.rpm
+        rpm -ivh --replacepkgs ./third-party/postgresql/postgresql13-server-13.*-*.rhel7.x86_64.rpm
         chown -R postgres:postgres /var/opt/postgres
         echo 'export PGDATA="/var/opt/postgres/data"' >> /etc/profile
         echo 'export PGSETUP_INITDB_OPTIONS="-D /var/opt/postgres/data"' >> /etc/profile
@@ -76,7 +81,7 @@
         sed -i "s~^Environment=PGDATA=.*~Environment=PGDATA=/var/opt/postgres/data~" /lib/systemd/system/postgresql-13.service
         systemctl daemon-reload
         /usr/pgsql-13/bin/postgresql-13-setup initdb 
-        systemctl start postgresql-13.service 
+        systemctl start postgresql-13.service && systemctl enable postgresql-13
         ```
     2. PostgreSQL 配置
         ```
@@ -105,8 +110,8 @@
         ```
     4. 安装Rabbitmq依赖(Install RabbitMQ dependencies.)
         ```
-        rpm -ivh --replacepkgs ./third-party/rabbitmq/socat-*.el7.x86_64.rpm
-        rpm -ivh --replacepkgs ./third-party/rabbitmq/erlang-*.el7.x86_64.rpm
+        ls ./third-party/rabbitmq/libltdl7-2.4.6-3.4.1.x86_64.rpm && rpm -ivh ./third-party/rabbitmq/libltdl7-2.4.6-3.4.1.x86_64.rpm
+        rpm -ivh --replacepkgs ./third-party/rabbitmq/*.el7.x86_64.rpm
         ```
     5. 安装db-util(You can use the bundled db-utils RPM found under /third-party/misc/.)
         ```

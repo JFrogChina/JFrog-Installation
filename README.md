@@ -36,17 +36,61 @@
 | Enterprise X | JFrog Artifactory: Universal Package Manager Repository <br>JFrog Xray: Security and Compliance Scanning |
 | Enterprise+ | JFrog Artifactory: Universal Package Manager Repository <br>JFrog Insight: Manage DevOps Insights <br>JFrog Xray: Security and Compliance Scanning <br>JFrog Pipelines: CI/CD pipeline orchestration  <br>JFrog Distribution: Global software distribution |
 
+## Artifactory 网络端口
+8081和8082是外部的访问端口
+其他端口：
+| Microservice | Port |
+| ---- | ---- |
+| Artifactory | 8081 |
+| Access | 8040 and 8045 |
+| Web | 8070 |
+| Replicator | 8048 and 9092 |
+| Metadata | 8086 |
+| Router | 8082, 8046, 8047, 8049, and 8091 |
+| Events | 8061 and 8062 |
+| Integration | 8071 and 8072 |
+| JFConnect | 8030 |
+| Observability | 8036 |
+| gRPC | 8037 |
+
+## Xray 网络端口
+8082是外部的访问端口
+其他端口：
+| Microservice | Port |
+| ---- | ---- |
+| Xray Server | 8000 |
+| Analysis | 7000 |
+| Indexer | 7002 |
+| Persist | 7003 |
+| Router | 8082, 8046, 8047, and 8049 |
+| RabbitMQ | 4369, 5671, 5672, 15672, and 25672 |
+| PostgreSQL (bundled PostgreSQL) | 5432 |
+| Observability | 8036 |
+| gRPC | 8037 |
+
 ## 安装包及认证
 >[安装包](https://jfrog.com/download-legacy/)<br>
 >默认账户和密码(Default credential for Artifactory:)<br>
 user: admin<br>
 password: password
 ## 演示环境准备
-Cenotos7.x虚拟机  2台 [(VirtualBox提供)](https://github.com/alexwang66/Guestbook-microservices-k8s/blob/master/Virtualbox安装虚拟机配置双网卡.md)
+Cenotos7.x虚拟机  2台 [(VirtualBox提供)](https://github.com/alexwang66/Guestbook-microservices-k8s/blob/master/Virtualbox安装虚拟机配置双网卡.md) - 此虚拟机不支持安装Artifactory7.77.3及以上的版本，说明:
+>Operating Systems - End of Support
+As part of JFrog commitment to maintain the security and reliability of the JFrog Platform, Artifactory will officially run with Node.js 20.x on all installation types from Artifactory 7.77.3.<br>
+>Node.js 20.x provided with Linux Archive/Debian/RPM installations (non-containerized distributions) is not supported on the following operating systems.<br>
+>Ubuntu 18.04 (has reached End of Standard Support on May 31, 2023).<br>
+>RHEL 7.x - Red Hat Enterprise Linux 7.x (has reached End of Full Support on 2019)<br>
+>Centos 7.x (has reached End of Active Support on 2020).<br>
+>Suse Linux Enterprise Server (SLES) 12 SP5 ( will reach End of Standard Support on October 31, 2024)<br>
+>Amazon Linux 2 (no support for Node.js 20x)<br>
+>Hence, these operating systems will no longer supported from Artifactory version 7.77.3.<br>
+
 >虚机的推荐配置如下,所有磁盘空间都分给"/"目录<br>
 >* 2c4g100G for Artifactory<br>
 >* 4c8g200G for Xray<br>
 >* 8c16g300G for K8s<br>
+
+
 
 >服务器时区和时间配置
 ```shell
