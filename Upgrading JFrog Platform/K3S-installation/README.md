@@ -233,3 +233,115 @@ kubectl delete pvc -n xray -l app.kubernetes.io/name=postgresql
 - Ensure PostgreSQL PVC is cleared if reinstalling with new credentials.
 - Password mismatch is the most common cause of startup failures.
 - Always specify `unifiedUpgradeAllowed=true` when upgrading from Xray 3.x.
+
+
+# 📦 Exporting Docker Images for Offline Installation of JFrog Artifactory and Xray (K3s)
+
+This guide describes how to **export all Docker images** required for **offline installation** of **JFrog Artifactory** and **Xray** on a K3s cluster.
+
+---
+
+## ✅ 1. Prerequisites
+
+- Internet-connected Linux machine with:
+  - Docker or Podman installed
+  - Helm installed
+  - `helm repo add jfrog https://charts.jfrog.io`
+- Target air-gapped environment:
+  - K3s cluster installed
+  - Optional: Local Docker registry in the offline environment
+
+---
+
+## 📥 2. Add Helm Repo and Update
+
+```bash
+helm repo add jfrog https://charts.jfrog.io
+helm repo update
+```
+
+---
+
+## 🔍 3. Generate Required Image Lists
+
+### ✳️ Artifactory
+
+```bash
+helm template artifactory jfrog/artifactory --namespace artifactory   --set artifactory.masterKey=EXAMPLE_MASTER_KEY   --set artifactory.joinKey=EXAMPLE_JOIN_KEY   | grep image: | awk '{print $2}' | sort | uniq > artifactory-images.txt
+```
+
+### ✳️ Xray
+
+Ensure you have a `xray-values.yaml` that includes:
+
+```yaml
+xray:
+  jfrogUrl: http://artifactory-artifactory-nginx.artifactory.svc.cluster.local
+
+rabbitmq:
+  auth:
+    password: SecureRabbit123
+```
+
+Then run:
+
+```bash
+helm template xray jfrog/xray --namespace xray -f xray-values.yaml   | grep image: | awk '{print $2}' | sort | uniq > xray-images.txt
+```
+
+---
+
+## 💾 4. Download and Save Docker Images
+
+```bash
+cat artifactory-images.txt xray-images.txt | sort | uniq | while read image; do
+  docker pull "$image"
+done
+
+mkdir -p jfrog-images
+cat artifactory-images.txt xray-images.txt | sort | uniq | while read image; do
+  sanitized=$(echo "$image" | tr '/:' '_')
+  docker save "$image" -o jfrog-images/${sanitized}.tar
+done
+```
+
+---
+
+## 🚚 5. Transfer Images to Offline Machine
+
+You can use `scp`, USB, or portable SSD:
+
+```bash
+scp -r jfrog-images/ user@offline-node:/path/to/import
+```
+
+---
+
+## 📦 6. Load Images on Air-Gapped K3s Node
+
+```bash
+cd /path/to/import/jfrog-images
+
+for tar in *.tar; do
+  docker load -i "$tar"
+done
+```
+
+> If using containerd in K3s, use: `ctr -n=k8s.io images import <image.tar>`
+
+---
+
+## ✅ 7. Proceed with Helm Install Offline
+
+```bash
+helm upgrade --install artifactory jfrog/artifactory -n artifactory -f artifactory-values.yaml
+helm upgrade --install xray jfrog/xray -n xray -f xray-values.yaml
+```
+
+---
+
+## 📌 Notes
+
+- You must provide valid `masterKey`, `joinKey`, and RabbitMQ credentials.
+- Always test image loading before Helm deployment.
+- Use `--dry-run` on Helm to confirm chart rendering before installation.
