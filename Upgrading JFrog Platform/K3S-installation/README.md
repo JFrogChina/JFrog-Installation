@@ -107,3 +107,129 @@ tail -f port-forward.log
 - [JFrog Artifactory Helm Chart](https://github.com/jfrog/charts/tree/master/stable/artifactory)
 - [K3s Documentation](https://docs.k3s.io/)
 - [Helm Docs](https://helm.sh/docs/)
+
+# 🛠️ Installing JFrog Xray on K3s with Helm
+
+This guide walks you through deploying **JFrog Xray** on a K3s Kubernetes cluster using Helm.
+
+---
+
+## 📦 Prerequisites
+
+- ✅ K3s cluster up and running
+- ✅ Helm installed (`helm version`)
+- ✅ `kubectl` configured to access the K3s cluster
+- ✅ Artifactory already installed in namespace `artifactory`
+
+---
+
+## 🔐 1. Prepare Secrets
+
+### 👉 Create the PostgreSQL password Secret
+
+```bash
+kubectl create namespace xray
+
+kubectl create secret generic xray-postgresql \
+  -n xray \
+  --from-literal=password=MyActualPgPassword123 \
+  --from-literal=postgres-password=MyActualPgPassword123
+```
+
+### 👉 Create the joinKey Secret
+
+```bash
+kubectl create secret generic joinkey-secret \
+  --from-literal=join-key=YOUR_JOIN_KEY \
+  -n xray
+```
+
+### 👉 (Optional) MasterKey Secret if required:
+
+```bash
+kubectl create secret generic masterkey-secret \
+  --from-literal=master-key=YOUR_MASTER_KEY \
+  -n xray
+```
+
+---
+
+## ⚙️ 2. Prepare `xray-values.yaml`
+
+```yaml
+xray:
+  joinKeySecretName: joinkey-secret
+  masterKeySecretName: masterkey-secret
+
+  database:
+    host: xray-postgresql
+    user: xray
+    existingSecret: xray-postgresql
+    existingSecretKey: password
+
+  jfrogUrl: http://artifactory-artifactory-nginx.artifactory.svc.cluster.local
+
+postgresql:
+  enabled: true
+  auth:
+    existingSecret: xray-postgresql
+    username: xray
+    database: xraydb
+```
+
+Save as `xray-values.yaml`.
+
+---
+
+## 🚀 3. Install Xray via Helm
+
+```bash
+helm repo add jfrog https://charts.jfrog.io
+helm repo update
+
+helm upgrade --install xray jfrog/xray \
+  -n xray \
+  -f xray-values.yaml \
+  --set unifiedUpgradeAllowed=true
+```
+
+---
+
+## ✅ 4. Verify Installation
+
+```bash
+kubectl get pods -n xray
+kubectl get svc -n xray
+```
+
+Ensure all Xray pods are `Running`.
+
+
+---
+
+## 🧪 6. Test Database Access (Optional)
+
+```bash
+kubectl run psql-test -n xray --rm -it --image=bitnami/postgresql -- bash
+
+# Then inside container:
+export PGPASSWORD=MyActualPgPassword123
+psql -U xray -h xray-postgresql -d xraydb
+```
+
+---
+
+## 🧹 7. Uninstall (if needed)
+
+```bash
+helm uninstall xray -n xray
+kubectl delete pvc -n xray -l app.kubernetes.io/name=postgresql
+```
+
+---
+
+## 📌 Notes
+
+- Ensure PostgreSQL PVC is cleared if reinstalling with new credentials.
+- Password mismatch is the most common cause of startup failures.
+- Always specify `unifiedUpgradeAllowed=true` when upgrading from Xray 3.x.
